@@ -13,6 +13,7 @@ import {
   PrivacyPage,
   ResetPasswordPage,
 } from './pages/auth'
+import { TodayPage } from './pages/nurse/Today'
 
 export function RequireRole({ roles, children }: { roles: Role[]; children: ReactNode }) {
   const { session, profile, loading } = useAuth()
@@ -61,7 +62,7 @@ export function AppRoutes() {
         <Route path="/conta" element={<AccountPage />} />
       </Route>
       <Route element={<RequireRole roles={STAFF}><Layout /></RequireRole>}>
-        <Route path="/hoje" element={<Soon name="Hoje" />} />
+        <Route path="/hoje" element={<TodayPage />} />
         <Route path="/residentes" element={<Soon name="Residentes" />} />
       </Route>
       <Route element={<RequireRole roles={FAMILY}><Layout /></RequireRole>}>
