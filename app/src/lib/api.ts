@@ -181,3 +181,65 @@ export async function fetchMyResidents(): Promise<LinkedResident[]> {
     .map((r) => ({ ...(r.residents as Resident), relationship: r.relationship }))
     .sort((a, b) => a.full_name.localeCompare(b.full_name, 'pt-BR'))
 }
+
+// Administração de usuários (Edge Function admin-users) -------------------------------
+
+export type AdminUsersBody =
+  | { action: 'list' }
+  | { action: 'create'; email: string; full_name: string; role: Role; temp_password: string }
+  | { action: 'reset_password'; user_id: string; temp_password: string }
+  | { action: 'set_active'; user_id: string; active: boolean }
+
+export interface AuthUserInfo {
+  id: string
+  email: string
+  last_sign_in_at: string | null
+}
+
+export async function adminUsers(
+  body: AdminUsersBody,
+): Promise<{ user_id?: string; users?: AuthUserInfo[] }> {
+  let res: { data: { ok: boolean; error?: string; user_id?: string; users?: AuthUserInfo[] } | null; error: unknown }
+  try {
+    res = await supabase.functions.invoke('admin-users', { body })
+  } catch (e) {
+    throw new ApiError(e)
+  }
+  if (res.error) {
+    // Erros 4xx da função trazem a mensagem no corpo
+    const ctx = (res.error as { context?: Response }).context
+    const payload = ctx ? await ctx.json().catch(() => null) : null
+    throw new Error(payload?.error ?? friendlyError(res.error))
+  }
+  if (!res.data?.ok) throw new Error(res.data?.error ?? 'Algo deu errado. Tente novamente.')
+  return res.data
+}
+
+export interface FamilyLink {
+  resident_id: string
+  relationship: string | null
+  resident_name: string
+}
+
+export async function fetchLinks(familyId: string): Promise<FamilyLink[]> {
+  const rows = (await run(
+    supabase.from('family_links').select('resident_id, relationship, residents(full_name)').eq('family_id', familyId),
+  )) as unknown as { resident_id: string; relationship: string | null; residents: { full_name: string } | null }[]
+  return rows.map((r) => ({
+    resident_id: r.resident_id,
+    relationship: r.relationship,
+    resident_name: r.residents?.full_name ?? '—',
+  }))
+}
+
+export async function addLink(familyId: string, residentId: string, relationship: string): Promise<void> {
+  await run(
+    supabase
+      .from('family_links')
+      .insert({ family_id: familyId, resident_id: residentId, relationship: relationship.trim() || null }),
+  )
+}
+
+export async function removeLink(familyId: string, residentId: string): Promise<void> {
+  await run(supabase.from('family_links').delete().eq('family_id', familyId).eq('resident_id', residentId))
+}
