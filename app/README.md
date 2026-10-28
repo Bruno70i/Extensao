@@ -61,7 +61,9 @@ Testes: `npm test` (agenda, validações e regras RLS num Postgres embutido).
    ```bash
    npx supabase login
    npx supabase link --project-ref SEU_PROJECT_REF
-   npx supabase functions deploy admin-users
+   npx supabase functions deploy admin-users --no-verify-jwt
+   ```
+   Pelo painel: Edge Functions → Deploy a new function → Via Editor, cole `supabase/functions/admin-users/index.ts`, nome `admin-users`. Depois, em **Settings** da função, desligue **Verify JWT with legacy secret** (a função já valida o usuário e o papel de admin no código).
    ```
 7. **Vercel:** importe o repositório, *Root Directory* = `app`, e configure as variáveis `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` (Settings → API no Supabase). A chave **service_role nunca** vai para a Vercel nem para o código.
 
