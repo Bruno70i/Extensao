@@ -13,6 +13,7 @@ import {
   PrivacyPage,
   ResetPasswordPage,
 } from './pages/auth'
+import { FamilyHistoryPage, FamilyHomePage } from './pages/family/FamilyPages'
 import { TodayPage } from './pages/nurse/Today'
 import { PrescriptionFormPage } from './pages/residents/PrescriptionForm'
 import { ResidentDetailPage } from './pages/residents/ResidentDetail'
@@ -75,8 +76,8 @@ export function AppRoutes() {
         <Route path="/residentes/:id/prescricoes/:pid/editar" element={<PrescriptionFormPage />} />
       </Route>
       <Route element={<RequireRole roles={FAMILY}><Layout /></RequireRole>}>
-        <Route path="/familia" element={<Soon name="Meu idoso" />} />
-        <Route path="/familia/historico" element={<Soon name="Histórico" />} />
+        <Route path="/familia" element={<FamilyHomePage />} />
+        <Route path="/familia/historico" element={<FamilyHistoryPage />} />
       </Route>
       <Route element={<RequireRole roles={ADMIN}><Layout /></RequireRole>}>
         <Route path="/admin" element={<Soon name="Painel" />} />

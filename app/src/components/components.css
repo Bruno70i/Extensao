@@ -742,3 +742,18 @@ a.list-item:hover {
   min-width: var(--tap);
   padding: 0;
 }
+
+.progress {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--neutral-soft);
+  overflow: hidden;
+  margin-top: 10px;
+}
+.progress span {
+  display: block;
+  height: 100%;
+  background: var(--ok);
+  border-radius: 999px;
+  transition: width 0.3s;
+}

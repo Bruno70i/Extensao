@@ -166,3 +166,18 @@ export async function fetchProfiles(): Promise<Profile[]> {
 export async function updateProfile(id: string, changes: { full_name?: string; role?: Role }): Promise<void> {
   await run(supabase.from('profiles').update(changes).eq('id', id))
 }
+
+// Familiar ----------------------------------------------------------------------
+
+export type LinkedResident = Resident & { relationship: string | null }
+
+export async function fetchMyResidents(): Promise<LinkedResident[]> {
+  const { data: auth } = await supabase.auth.getUser()
+  const rows = (await run(
+    supabase.from('family_links').select('relationship, residents(*)').eq('family_id', auth.user?.id ?? ''),
+  )) as unknown as { relationship: string | null; residents: Resident | null }[]
+  return rows
+    .filter((r) => r.residents && r.residents.active)
+    .map((r) => ({ ...(r.residents as Resident), relationship: r.relationship }))
+    .sort((a, b) => a.full_name.localeCompare(b.full_name, 'pt-BR'))
+}
