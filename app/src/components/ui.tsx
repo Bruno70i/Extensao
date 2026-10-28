@@ -1,6 +1,8 @@
 import {
   AlertTriangle,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   Clock,
   Inbox,
   MinusCircle,
@@ -175,6 +177,33 @@ export function ErrorBox({ message, onRetry }: { message: string; onRetry?: () =
           Tentar novamente
         </Button>
       )}
+    </div>
+  )
+}
+
+/** Navegação por dia (anterior / próximo / escolher data), sem passar de `max`. */
+export function DayNav({ day, max, onChange }: { day: string; max: string; onChange: (day: string) => void }) {
+  const shift = (n: number) => {
+    const t = new Date(`${day}T12:00:00Z`)
+    t.setUTCDate(t.getUTCDate() + n)
+    onChange(t.toISOString().slice(0, 10))
+  }
+  return (
+    <div className="day-nav">
+      <Button variant="secondary" className="icon-btn" aria-label="Dia anterior" onClick={() => shift(-1)}>
+        <ChevronLeft size={20} aria-hidden />
+      </Button>
+      <input
+        className="input"
+        type="date"
+        value={day}
+        max={max}
+        aria-label="Escolher dia"
+        onChange={(e) => e.target.value && onChange(e.target.value > max ? max : e.target.value)}
+      />
+      <Button variant="secondary" className="icon-btn" aria-label="Próximo dia" disabled={day >= max} onClick={() => shift(1)}>
+        <ChevronRight size={20} aria-hidden />
+      </Button>
     </div>
   )
 }

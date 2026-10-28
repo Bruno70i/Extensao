@@ -85,6 +85,20 @@ describe('buildSchedule', () => {
     expect(items[0].record?.id).toBe('B')
   })
 
+  it('prescrição encerrada mantém só as doses já registradas', () => {
+    const ended = rx({ active: false, end_date: DAY })
+    const items = buildSchedule([ended], [rec()], DAY, spInstant(DAY, '15:00'))
+    expect(items).toHaveLength(1)
+    expect(items[0].status).toBe('given')
+  })
+
+  it('registro em horário que foi removido da prescrição continua aparecendo', () => {
+    const edited = rx({ times: ['09:00'] })
+    const items = buildSchedule([edited], [rec()], DAY, spInstant(DAY, '15:00'))
+    expect(items.map((i) => i.scheduledFor.toISOString())).toEqual(['2026-10-28T11:00:00.000Z', '2026-10-28T12:00:00.000Z'])
+    expect(items[0].status).toBe('given')
+  })
+
   it('ordena por horário e medicamento', () => {
     const items = buildSchedule(
       [rx({ id: 'p1', medication: 'Losartana', times: ['08:00'] }), rx({ id: 'p2', medication: 'Dipirona', times: ['08:00'] })],

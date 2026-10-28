@@ -43,3 +43,29 @@ export function generateTempPassword(): string {
   crypto.getRandomValues(bytes)
   return Array.from(bytes, (b) => PASSWORD_CHARS[b % PASSWORD_CHARS.length]).join('')
 }
+
+export interface PrescriptionForm {
+  medication: string
+  dosage: string
+  route: string
+  times: string[]
+  start_date: string
+  end_date: string
+  prescriber_name: string
+  prescriber_crm: string
+}
+
+/** Erros por campo do formulário de prescrição ({} quando válido). */
+export function validatePrescription(f: PrescriptionForm): Partial<Record<keyof PrescriptionForm, string>> {
+  const errors: Partial<Record<keyof PrescriptionForm, string>> = {}
+  if (!f.medication.trim()) errors.medication = 'Informe o medicamento'
+  if (!f.dosage.trim()) errors.dosage = 'Informe a dose'
+  if (!f.route) errors.route = 'Escolha a via'
+  if (!f.prescriber_name.trim()) errors.prescriber_name = 'Informe o médico'
+  if (!f.prescriber_crm.trim()) errors.prescriber_crm = 'Informe o CRM'
+  if (!f.start_date) errors.start_date = 'Informe o início'
+  else if (f.end_date && f.end_date < f.start_date) errors.end_date = 'O fim não pode ser antes do início'
+  const t = parseTimes(f.times)
+  if (t.error) errors.times = t.error
+  return errors
+}

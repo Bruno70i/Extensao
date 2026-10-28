@@ -14,6 +14,10 @@ import {
   ResetPasswordPage,
 } from './pages/auth'
 import { TodayPage } from './pages/nurse/Today'
+import { PrescriptionFormPage } from './pages/residents/PrescriptionForm'
+import { ResidentDetailPage } from './pages/residents/ResidentDetail'
+import { ResidentFormPage } from './pages/residents/ResidentForm'
+import { ResidentListPage } from './pages/residents/ResidentList'
 
 export function RequireRole({ roles, children }: { roles: Role[]; children: ReactNode }) {
   const { session, profile, loading } = useAuth()
@@ -63,7 +67,12 @@ export function AppRoutes() {
       </Route>
       <Route element={<RequireRole roles={STAFF}><Layout /></RequireRole>}>
         <Route path="/hoje" element={<TodayPage />} />
-        <Route path="/residentes" element={<Soon name="Residentes" />} />
+        <Route path="/residentes" element={<ResidentListPage />} />
+        <Route path="/residentes/novo" element={<ResidentFormPage />} />
+        <Route path="/residentes/:id" element={<ResidentDetailPage />} />
+        <Route path="/residentes/:id/editar" element={<ResidentFormPage />} />
+        <Route path="/residentes/:id/prescricoes/nova" element={<PrescriptionFormPage />} />
+        <Route path="/residentes/:id/prescricoes/:pid/editar" element={<PrescriptionFormPage />} />
       </Route>
       <Route element={<RequireRole roles={FAMILY}><Layout /></RequireRole>}>
         <Route path="/familia" element={<Soon name="Meu idoso" />} />

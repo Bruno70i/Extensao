@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { friendlyError, generateTempPassword, parseTimes, validateDose, validateNewPassword } from './validation'
+import {
+  friendlyError,
+  generateTempPassword,
+  parseTimes,
+  validateDose,
+  validateNewPassword,
+  validatePrescription,
+} from './validation'
 
 describe('validateNewPassword', () => {
   it('exige ao menos 8 caracteres', () => {
@@ -63,5 +70,29 @@ describe('generateTempPassword', () => {
       expect(p).toHaveLength(10)
       expect(p).not.toMatch(/[0O1lI]/)
     }
+  })
+})
+
+describe('validatePrescription', () => {
+  const ok = {
+    medication: 'Losartana',
+    dosage: '50 mg',
+    route: 'Oral',
+    times: ['08:00'],
+    start_date: '2026-10-28',
+    end_date: '',
+    prescriber_name: 'Dra. Ana',
+    prescriber_crm: 'CRM-SP 1',
+  }
+  it('aceita prescrição completa', () => {
+    expect(validatePrescription(ok)).toEqual({})
+  })
+  it('aponta campos obrigatórios', () => {
+    const errors = validatePrescription({ ...ok, medication: ' ', dosage: '', prescriber_name: '', prescriber_crm: '', start_date: '' })
+    expect(Object.keys(errors).sort()).toEqual(['dosage', 'medication', 'prescriber_crm', 'prescriber_name', 'start_date'])
+  })
+  it('valida horários e período', () => {
+    expect(validatePrescription({ ...ok, times: [] }).times).toBe('Informe ao menos um horário')
+    expect(validatePrescription({ ...ok, end_date: '2026-10-27' }).end_date).toBe('O fim não pode ser antes do início')
   })
 })

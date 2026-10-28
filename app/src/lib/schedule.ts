@@ -62,11 +62,17 @@ export function buildSchedule(
   const lateBefore = now.getTime() - LATE_TOLERANCE_MIN * 60 * 1000
   const items: DoseItem[] = []
 
+  const shown = new Set<string>()
+
   for (const p of prescriptions) {
-    if (!isActiveOn(p, day)) continue
+    const active = isActiveOn(p, day)
     for (const t of p.times) {
       const scheduledFor = spInstant(day, t)
-      const record = latest.get(recordKey(p.id, scheduledFor)) ?? null
+      const key = recordKey(p.id, scheduledFor)
+      const record = latest.get(key) ?? null
+      // Prescrição encerrada/fora do período: só mostra o que já foi registrado
+      if (!active && !record) continue
+      shown.add(key)
       const status: DoseStatus = record
         ? record.status
         : scheduledFor.getTime() < lateBefore
@@ -74,6 +80,15 @@ export function buildSchedule(
           : 'pending'
       items.push({ prescription: p, scheduledFor, status, record })
     }
+  }
+
+  // Registros de horários que não existem mais na prescrição (ela foi editada) continuam visíveis
+  const byId = new Map(prescriptions.map((p) => [p.id, p]))
+  for (const [key, record] of latest) {
+    const p = byId.get(record.prescription_id)
+    const scheduledFor = new Date(record.scheduled_for)
+    if (shown.has(key) || !p || todaySP(scheduledFor) !== day) continue
+    items.push({ prescription: p, scheduledFor, status: record.status, record })
   }
 
   return items.sort(
