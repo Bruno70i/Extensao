@@ -37,11 +37,11 @@ const RX_B = '20000000-0000-0000-0000-000000000002'
 let db: PGlite
 
 /** Executa `fn` como o usuário `uid` dentro de uma transação desfeita ao final. */
-async function as<T>(uid: string, fn: (q: (s: string) => Promise<any>) => Promise<T>): Promise<T> {
+async function as<T>(uid: string, fn: (q: (s: string) => Promise<Record<string, unknown>[]>) => Promise<T>): Promise<T> {
   await db.exec('begin')
   try {
     await db.exec(`set local role authenticated; set local request.jwt.claims = '{"sub":"${uid}"}'`)
-    return await fn(async (s) => (await db.query(s)).rows)
+    return await fn(async (s) => (await db.query<Record<string, unknown>>(s)).rows)
   } finally {
     await db.exec('rollback')
   }
