@@ -14,6 +14,7 @@ import {
 } from '../../lib/api'
 import { useAuth } from '../../lib/auth'
 import { ageOn, formatShortDate } from '../../lib/format'
+import { endDateFor } from '../../lib/rules'
 import { buildSchedule, todaySP } from '../../lib/schedule'
 import type { Administration, Prescription, Resident } from '../../lib/types'
 
@@ -104,7 +105,7 @@ export function ResidentDetailPage() {
     if (!ending) return
     setBusy(true)
     try {
-      await endPrescription(ending.id, today)
+      await endPrescription(ending.id, endDateFor(ending, today))
       toast('Prescrição encerrada')
       setEnding(null)
       load()

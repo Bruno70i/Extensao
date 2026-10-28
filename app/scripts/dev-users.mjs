@@ -17,7 +17,13 @@ for (const u of DEV_USERS) {
   const res = await fetch(`${API}/auth/v1/admin/users`, {
     method: 'POST',
     headers,
-    body: JSON.stringify({ email: u.email, password: DEV_PASSWORD, email_confirm: true, user_metadata: u }),
+    body: JSON.stringify({
+      email: u.email,
+      password: DEV_PASSWORD,
+      email_confirm: true,
+      user_metadata: { full_name: u.full_name },
+      app_metadata: { role: u.role },
+    }),
   })
   const body = await res.json()
   if (!res.ok) {

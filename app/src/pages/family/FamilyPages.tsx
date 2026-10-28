@@ -51,7 +51,7 @@ function useDay(residentId: string | undefined, day: string, live: boolean) {
   const load = useCallback(async () => {
     if (!residentId) return
     try {
-      const rx = await fetchPrescriptions([residentId])
+      const rx = await fetchPrescriptions([residentId], { from: day, to: day })
       const recs = await fetchAdministrationsForDay(
         day,
         rx.map((p) => p.id),

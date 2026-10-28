@@ -66,7 +66,9 @@ Deno.serve(async (req) => {
         email,
         password,
         email_confirm: true,
-        user_metadata: { full_name: fullName, role },
+        user_metadata: { full_name: fullName },
+        // O papel vai no app_metadata: só o servidor consegue definir
+        app_metadata: { role },
       })
       if (error) {
         const exists = /already|registered|exists/i.test(error.message)

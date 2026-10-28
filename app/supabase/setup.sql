@@ -96,6 +96,24 @@ create trigger administrations_check_supersedes
 before insert on public.administrations
 for each row execute function public.check_supersedes();
 
+-- Quem registrou e quando são definidos pelo servidor (a auditoria não pode ser forjada)
+create or replace function public.stamp_administration()
+returns trigger
+language plpgsql
+as $$
+begin
+  if auth.uid() is not null then
+    new.recorded_by := auth.uid();
+    new.recorded_at := now();
+  end if;
+  return new;
+end;
+$$;
+
+create trigger administrations_stamp
+before insert on public.administrations
+for each row execute function public.stamp_administration();
+
 -- Cria o perfil automaticamente quando um usuário é criado no Auth ----------
 create or replace function public.handle_new_user()
 returns trigger
@@ -108,8 +126,10 @@ begin
   values (
     new.id,
     coalesce(nullif(new.raw_user_meta_data ->> 'full_name', ''), split_part(new.email, '@', 1)),
-    case when new.raw_user_meta_data ->> 'role' in ('admin', 'nurse', 'family')
-         then new.raw_user_meta_data ->> 'role' else 'family' end
+    -- O papel vem do app_metadata, que só o servidor (service_role) consegue definir.
+    -- Nunca use user_metadata aqui: qualquer pessoa pode preenchê-lo ao se cadastrar.
+    case when new.raw_app_meta_data ->> 'role' in ('admin', 'nurse', 'family')
+         then new.raw_app_meta_data ->> 'role' else 'family' end
   );
   return new;
 end;
@@ -118,6 +138,26 @@ $$;
 create trigger on_auth_user_created
 after insert on auth.users
 for each row execute function public.handle_new_user();
+
+-- O Auth grava o app_metadata logo depois de criar o usuário: aplica o papel quando ele muda
+create or replace function public.handle_user_role_change()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if new.raw_app_meta_data ->> 'role' in ('admin', 'nurse', 'family')
+     and new.raw_app_meta_data ->> 'role' is distinct from old.raw_app_meta_data ->> 'role' then
+    update public.profiles set role = new.raw_app_meta_data ->> 'role' where id = new.id;
+  end if;
+  return new;
+end;
+$$;
+
+create trigger on_auth_user_role_changed
+after update of raw_app_meta_data on auth.users
+for each row execute function public.handle_user_role_change();
 
 -- Tempo real para os familiares acompanharem as doses ----------------------
 alter publication supabase_realtime add table public.administrations;

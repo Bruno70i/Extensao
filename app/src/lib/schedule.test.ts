@@ -92,6 +92,12 @@ describe('buildSchedule', () => {
     expect(items[0].status).toBe('given')
   })
 
+  it('prescrição suspensa continua valendo nos dias anteriores à suspensão', () => {
+    const suspended = rx({ active: false, end_date: '2026-10-28' })
+    const items = buildSchedule([suspended], [], '2026-10-27', spInstant(DAY, '15:00'))
+    expect(items.map((i) => i.status)).toEqual(['late', 'late'])
+  })
+
   it('registro em horário que foi removido da prescrição continua aparecendo', () => {
     const edited = rx({ times: ['09:00'] })
     const items = buildSchedule([edited], [rec()], DAY, spInstant(DAY, '15:00'))

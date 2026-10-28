@@ -61,9 +61,14 @@ export async function saveResident(r: Partial<Resident> & { full_name: string })
 
 // Prescrições -----------------------------------------------------------------
 
-export async function fetchPrescriptions(residentIds?: string[]): Promise<Prescription[]> {
+/** Prescrições; com `period`, só as que valem em algum dia do intervalo (evita trazer o histórico inteiro). */
+export async function fetchPrescriptions(
+  residentIds?: string[],
+  period?: { from: string; to: string },
+): Promise<Prescription[]> {
   let q = supabase.from('prescriptions').select(RX_COLUMNS).order('medication')
   if (residentIds) q = q.in('resident_id', residentIds)
+  if (period) q = q.lte('start_date', period.to).or(`end_date.is.null,end_date.gte.${period.from}`)
   const rows = await run<Prescription[]>(q)
   return rows.map(normalizePrescription)
 }
@@ -94,22 +99,51 @@ export async function savePrescription(p: PrescriptionInput): Promise<Prescripti
   return normalizePrescription(await run<Prescription>(q))
 }
 
-export async function endPrescription(id: string, today: string): Promise<void> {
-  await run(supabase.from('prescriptions').update({ active: false, end_date: today }).eq('id', id))
+/**
+ * Encerra uma prescrição na data indicada (os registros já feitos continuam no histórico).
+ * `stopNow` suspende na hora (doses pendentes somem); sem ele, ela vale até o fim de `endDate`.
+ */
+export async function endPrescription(id: string, endDate: string, stopNow = true): Promise<void> {
+  await run(
+    supabase
+      .from('prescriptions')
+      .update(stopNow ? { end_date: endDate, active: false } : { end_date: endDate })
+      .eq('id', id),
+  )
+}
+
+/** Há registros de dose para a prescrição (desde `sinceDay`, se informado)? */
+export async function hasAdministrations(prescriptionId: string, sinceDay?: string): Promise<boolean> {
+  let q = supabase.from('administrations').select('id', { count: 'exact', head: true }).eq('prescription_id', prescriptionId)
+  if (sinceDay) q = q.gte('scheduled_for', spInstant(sinceDay, '00:00').toISOString())
+  const { count, error } = await q
+  if (error) throw new ApiError(error)
+  return (count ?? 0) > 0
 }
 
 // Administrações --------------------------------------------------------------
 
-export async function fetchAdministrationsForDay(day: string, prescriptionIds: string[]): Promise<Administration[]> {
-  if (prescriptionIds.length === 0) return []
-  return run(
-    supabase
-      .from('administrations')
-      .select('*')
-      .in('prescription_id', prescriptionIds)
-      .gte('scheduled_for', spInstant(day, '00:00').toISOString())
-      .lte('scheduled_for', spInstant(day, '23:59').toISOString()),
-  )
+/**
+ * Registros com horário previsto entre dois dias (inclusive). Sem `prescriptionIds`, traz tudo
+ * o que o usuário pode ver no período (a RLS já limita), sem montar URLs gigantes.
+ */
+export async function fetchAdministrationsBetween(
+  fromDay: string,
+  toDay: string,
+  prescriptionIds?: string[],
+): Promise<Administration[]> {
+  if (prescriptionIds && prescriptionIds.length === 0) return []
+  let q = supabase
+    .from('administrations')
+    .select('*')
+    .gte('scheduled_for', spInstant(fromDay, '00:00').toISOString())
+    .lt('scheduled_for', new Date(spInstant(toDay, '23:59').getTime() + 60_000).toISOString())
+  if (prescriptionIds) q = q.in('prescription_id', prescriptionIds)
+  return run(q)
+}
+
+export async function fetchAdministrationsForDay(day: string, prescriptionIds?: string[]): Promise<Administration[]> {
+  return fetchAdministrationsBetween(day, day, prescriptionIds)
 }
 
 export async function fetchAdministrationsForResident(residentId: string, day: string): Promise<Administration[]> {

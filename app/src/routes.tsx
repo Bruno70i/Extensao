@@ -1,8 +1,10 @@
 import type { ReactNode } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { Layout } from './components/Layout'
-import { Loading } from './components/ui'
+import { WifiOff } from 'lucide-react'
+import { Button, Loading } from './components/ui'
 import { homeFor, useAuth } from './lib/auth'
+import { routeDecision } from './lib/rules'
 import type { Role } from './lib/types'
 import {
   AccountPage,
@@ -24,25 +26,52 @@ import { ResidentDetailPage } from './pages/residents/ResidentDetail'
 import { ResidentFormPage } from './pages/residents/ResidentForm'
 import { ResidentListPage } from './pages/residents/ResidentList'
 
+function ProfileErrorScreen() {
+  const { refreshProfile, signOut } = useAuth()
+  return (
+    <div className="center-screen">
+      <div className="auth-card stack" style={{ textAlign: 'center', alignItems: 'center' }}>
+        <WifiOff size={36} color="var(--muted)" aria-hidden />
+        <h1 style={{ fontSize: '1.35rem' }}>Sem conexão com o servidor</h1>
+        <p className="muted">Não foi possível carregar seus dados. Verifique a internet e tente novamente.</p>
+        <div className="row">
+          <Button variant="secondary" onClick={signOut}>
+            Sair
+          </Button>
+          <Button onClick={refreshProfile}>Tentar novamente</Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function RequireRole({ roles, children }: { roles: Role[]; children: ReactNode }) {
-  const { session, profile, loading } = useAuth()
+  const { session, profile, profileError, loading } = useAuth()
   const location = useLocation()
 
-  if (loading) return <Loading />
-  if (!session) {
-    const next = encodeURIComponent(location.pathname + location.search)
-    return <Navigate to={`/login?next=${next}`} replace />
+  switch (routeDecision({ loading, hasSession: !!session, profile, profileError, roles })) {
+    case 'loading':
+      return <Loading />
+    case 'login':
+      return <Navigate to={`/login?next=${encodeURIComponent(location.pathname + location.search)}`} replace />
+    case 'error':
+      return <ProfileErrorScreen />
+    case 'disabled':
+      return <Navigate to="/desativado" replace />
+    case 'first-access':
+      return <Navigate to="/primeiro-acesso" replace />
+    case 'home':
+      return <Navigate to={homeFor(profile!.role)} replace />
+    default:
+      return <>{children}</>
   }
-  if (!profile || !profile.active) return <Navigate to="/desativado" replace />
-  if (profile.must_change_password) return <Navigate to="/primeiro-acesso" replace />
-  if (!roles.includes(profile.role)) return <Navigate to={homeFor(profile.role)} replace />
-  return <>{children}</>
 }
 
 function Home() {
-  const { profile, session, loading } = useAuth()
+  const { profile, profileError, session, loading } = useAuth()
   if (loading) return <Loading />
   if (!session) return <Navigate to="/login" replace />
+  if (profileError) return <ProfileErrorScreen />
   if (!profile) return <Navigate to="/desativado" replace />
   return <Navigate to={homeFor(profile.role)} replace />
 }

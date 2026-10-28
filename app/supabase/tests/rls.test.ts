@@ -12,7 +12,7 @@ const SUPABASE_STUB = `
 create role anon nologin;
 create role authenticated nologin;
 create schema auth;
-create table auth.users (id uuid primary key, email text, raw_user_meta_data jsonb default '{}');
+create table auth.users (id uuid primary key, email text, raw_user_meta_data jsonb default '{}', raw_app_meta_data jsonb default '{}');
 create function auth.uid() returns uuid language sql stable as $$
   select nullif(nullif(current_setting('request.jwt.claims', true), '')::json ->> 'sub', '')::uuid
 $$;
@@ -58,10 +58,10 @@ beforeAll(async () => {
   await db.exec(sql('migrations/002_rls.sql'))
   await db.exec(GRANTS)
   await db.exec(`
-    insert into auth.users (id, email, raw_user_meta_data) values
-      ('${ADMIN}', 'admin@x.com', '{"full_name":"Admin","role":"admin"}'),
-      ('${NURSE}', 'ana@x.com', '{"full_name":"Ana","role":"nurse"}'),
-      ('${FAMILY}', 'filha@x.com', '{"full_name":"Filha","role":"family"}');
+    insert into auth.users (id, email, raw_user_meta_data, raw_app_meta_data) values
+      ('${ADMIN}', 'admin@x.com', '{"full_name":"Admin"}', '{"role":"admin"}'),
+      ('${NURSE}', 'ana@x.com', '{"full_name":"Ana"}', '{"role":"nurse"}'),
+      ('${FAMILY}', 'filha@x.com', '{"full_name":"Filha"}', '{"role":"family"}');
     insert into public.residents (id, full_name) values ('${RES_A}', 'João'), ('${RES_B}', 'Maria');
     insert into public.family_links (family_id, resident_id, relationship) values ('${FAMILY}', '${RES_A}', 'Filha');
     insert into public.prescriptions (id, resident_id, medication, dosage, route, times, start_date, prescriber_name, prescriber_crm, created_by) values
@@ -74,9 +74,37 @@ beforeAll(async () => {
 })
 
 describe('perfis', () => {
-  it('trigger cria o perfil com nome e papel do metadata', async () => {
+  it('trigger cria o perfil com o papel definido pelo servidor (app_metadata)', async () => {
     const rows = (await db.query<{ role: string }>(`select role from public.profiles order by role`)).rows
     expect(rows.map((r) => r.role)).toEqual(['admin', 'family', 'nurse'])
+  })
+
+  it('papel definido pelo servidor depois da criação (como faz o Auth) é aplicado', async () => {
+    await db.exec('begin')
+    try {
+      const id = '00000000-0000-0000-0000-0000000000fe'
+      await db.exec(`insert into auth.users (id, email, raw_user_meta_data) values ('${id}', 'n@x.com', '{"full_name":"Nova"}')`)
+      await db.exec(`update auth.users set raw_app_meta_data = '{"role":"nurse","provider":"email"}' where id = '${id}'`)
+      const r = await db.query<{ role: string }>(`select role from public.profiles where id = '${id}'`)
+      expect(r.rows[0].role).toBe('nurse')
+      // Mudar só o user_metadata não altera o papel
+      await db.exec(`update auth.users set raw_user_meta_data = '{"role":"admin"}' where id = '${id}'`)
+      const r2 = await db.query<{ role: string }>(`select role from public.profiles where id = '${id}'`)
+      expect(r2.rows[0].role).toBe('nurse')
+    } finally {
+      await db.exec('rollback')
+    }
+  })
+
+  it('cadastro próprio pedindo admin no user_metadata vira familiar', async () => {
+    await db.exec('begin')
+    try {
+      await db.exec(`insert into auth.users (id, email, raw_user_meta_data) values ('00000000-0000-0000-0000-0000000000ff', 'x@x.com', '{"full_name":"Intruso","role":"admin"}')`)
+      const r = await db.query<{ role: string }>(`select role from public.profiles where id = '00000000-0000-0000-0000-0000000000ff'`)
+      expect(r.rows[0].role).toBe('family')
+    } finally {
+      await db.exec('rollback')
+    }
   })
 
   it('familiar não enxerga outros familiares, mas vê o nome da equipe', async () => {
@@ -140,10 +168,14 @@ describe('enfermeiro', () => {
     })
   })
 
-  it('não registra dose em nome de outra pessoa', async () => {
-    await expect(
-      as(NURSE, (q) => q(`insert into administrations (prescription_id, scheduled_for, status, recorded_by) values ('${RX_A}', '2026-10-28T23:00:00Z', 'given', '${ADMIN}')`)),
-    ).rejects.toThrow(/row-level security/)
+  it('quem registra e quando são definidos pelo servidor', async () => {
+    await as(NURSE, async (q) => {
+      const r = await q(
+        `insert into administrations (prescription_id, scheduled_for, status, recorded_by, recorded_at) values ('${RX_A}', '2026-10-28T23:00:00Z', 'given', '${ADMIN}', '2020-01-01T00:00:00Z') returning recorded_by, recorded_at > now() - interval '1 minute' as recente`,
+      )
+      expect(r[0].recorded_by).toBe(NURSE)
+      expect(r[0].recente).toBe(true)
+    })
   })
 
   it('não altera nem apaga registros', async () => {

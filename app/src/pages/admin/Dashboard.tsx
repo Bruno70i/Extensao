@@ -2,8 +2,9 @@ import { AlertTriangle, CalendarCheck, CheckCircle2, HeartPulse, Stethoscope, Us
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Avatar, Card, EmptyState, ErrorBox, Loading, PageHead } from '../../components/ui'
-import { fetchAdministrationsForDay, fetchPrescriptions, fetchProfiles, fetchResidents } from '../../lib/api'
-import { capitalize, formatDay } from '../../lib/format'
+import { fetchAdministrationsBetween, fetchPrescriptions, fetchProfiles, fetchResidents } from '../../lib/api'
+import { addDays, capitalize, formatDay } from '../../lib/format'
+import { carriedOver } from '../../lib/rules'
 import { buildSchedule, timeSP, todaySP } from '../../lib/schedule'
 import type { Administration, Prescription, Profile, Resident } from '../../lib/types'
 
@@ -19,12 +20,14 @@ export function DashboardPage() {
 
   const load = useCallback(async () => {
     try {
+      const today = todaySP(new Date())
+      const yesterday = addDays(today, -1)
       const [p, r] = await Promise.all([fetchProfiles(), fetchResidents({ activeOnly: true })])
-      const rx = await fetchPrescriptions(r.map((x) => x.id))
-      const recs = await fetchAdministrationsForDay(
-        todaySP(new Date()),
-        rx.map((x) => x.id),
+      const residentIds = new Set(r.map((x) => x.id))
+      const rx = (await fetchPrescriptions(undefined, { from: yesterday, to: today })).filter((x) =>
+        residentIds.has(x.resident_id),
       )
+      const recs = await fetchAdministrationsBetween(yesterday, today)
       setProfiles(p)
       setResidents(r)
       setPrescriptions(rx)
@@ -47,12 +50,16 @@ export function DashboardPage() {
   }, [load])
 
   const items = useMemo(() => buildSchedule(prescriptions, records, today, now), [prescriptions, records, today, now])
+  const fromYesterday = useMemo(
+    () => carriedOver(buildSchedule(prescriptions, records, addDays(today, -1), now), now),
+    [prescriptions, records, today, now],
+  )
   const residentById = useMemo(() => new Map(residents.map((r) => [r.id, r])), [residents])
 
   if (loading) return <Loading />
 
   const given = items.filter((i) => i.status === 'given').length
-  const late = items.filter((i) => i.status === 'late')
+  const late = [...fromYesterday, ...items.filter((i) => i.status === 'late')]
   const pct = items.length ? Math.round((given / items.length) * 100) : 0
   const activeCount = (role: Profile['role']) => profiles.filter((p) => p.active && p.role === role).length
 

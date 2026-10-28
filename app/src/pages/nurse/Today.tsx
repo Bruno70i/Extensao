@@ -4,13 +4,14 @@ import { Avatar, Button, EmptyState, ErrorBox, Loading, PageHead, StatusBadge } 
 import { useToast } from '../../components/toast'
 import {
   ApiError,
-  fetchAdministrationsForDay,
+  fetchAdministrationsBetween,
   fetchPrescriptions,
   fetchResidents,
   fetchStaffNames,
   recordDose,
 } from '../../lib/api'
-import { capitalize, formatDay } from '../../lib/format'
+import { addDays, capitalize, formatDay } from '../../lib/format'
+import { carriedOver } from '../../lib/rules'
 import { buildSchedule, timeSP, todaySP } from '../../lib/schedule'
 import type { Administration, DoseItem, Prescription, RecordStatus, Resident } from '../../lib/types'
 import { friendlyError } from '../../lib/validation'
@@ -40,12 +41,15 @@ export function TodayPage() {
 
   const load = useCallback(async () => {
     try {
+      const today = todaySP(new Date())
+      const yesterday = addDays(today, -1)
       const res = await fetchResidents({ activeOnly: true })
-      const rx = await fetchPrescriptions(res.map((r) => r.id))
-      const recs = await fetchAdministrationsForDay(
-        todaySP(new Date()),
-        rx.map((p) => p.id),
+      const residentIds = new Set(res.map((r) => r.id))
+      const rx = (await fetchPrescriptions(undefined, { from: yesterday, to: today })).filter((p) =>
+        residentIds.has(p.resident_id),
       )
+      // Ontem também: doses da madrugada que ficaram sem registro continuam registráveis
+      const recs = await fetchAdministrationsBetween(yesterday, today)
       setResidents(res)
       setPrescriptions(rx)
       setRecords(recs)
@@ -68,7 +72,13 @@ export function TodayPage() {
   }, [load])
 
   const residentById = useMemo(() => new Map(residents.map((r) => [r.id, r])), [residents])
-  const items = useMemo(() => buildSchedule(prescriptions, records, day, now), [prescriptions, records, day, now])
+  const items = useMemo(
+    () => [
+      ...carriedOver(buildSchedule(prescriptions, records, addDays(day, -1), now), now),
+      ...buildSchedule(prescriptions, records, day, now),
+    ],
+    [prescriptions, records, day, now],
+  )
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -147,7 +157,10 @@ export function TodayPage() {
             )}
           </div>
           <div className="dose-side">
-            <span className="dose-time">{timeSP(item.scheduledFor)}</span>
+            <span className="dose-time">
+              {todaySP(item.scheduledFor) !== day && <span className="small muted">ontem </span>}
+              {timeSP(item.scheduledFor)}
+            </span>
             <StatusBadge status={item.status} />
           </div>
         </div>

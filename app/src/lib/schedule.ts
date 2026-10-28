@@ -48,8 +48,14 @@ export function latestRecords(records: Administration[]): Map<string, Administra
   return map
 }
 
+/**
+ * A prescrição vale neste dia? Uma prescrição suspensa (active = false) no dia `end_date`
+ * continua valendo nos dias anteriores; no próprio dia só aparecem as doses já registradas.
+ */
 export function isActiveOn(p: Prescription, day: string): boolean {
-  return p.active && p.start_date <= day && (p.end_date === null || day <= p.end_date)
+  if (p.start_date > day) return false
+  if (p.end_date !== null && day > p.end_date) return false
+  return p.active || (p.end_date !== null && day < p.end_date)
 }
 
 export function buildSchedule(
