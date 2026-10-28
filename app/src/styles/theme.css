@@ -142,3 +142,9 @@ textarea {
   clip: rect(0 0 0 0);
   white-space: nowrap;
 }
+
+@media (max-width: 639px) {
+  .hide-sm {
+    display: none;
+  }
+}

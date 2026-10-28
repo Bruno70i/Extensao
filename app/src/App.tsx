@@ -1,3 +1,16 @@
+import { BrowserRouter } from 'react-router-dom'
+import { ToastProvider } from './components/toast'
+import { AuthProvider } from './lib/auth'
+import { AppRoutes } from './routes'
+
 export default function App() {
-  return <h1>Cuidar+</h1>
+  return (
+    <BrowserRouter>
+      <AuthProvider>
+        <ToastProvider>
+          <AppRoutes />
+        </ToastProvider>
+      </AuthProvider>
+    </BrowserRouter>
+  )
 }
