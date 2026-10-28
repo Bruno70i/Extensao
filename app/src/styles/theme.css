@@ -1,0 +1,144 @@
+:root {
+  --bg: #f7f9fa;
+  --card: #ffffff;
+  --primary: #0f766e;
+  --primary-hover: #0d5f59;
+  --primary-soft: #e6f4f2;
+  --primary-contrast: #ffffff;
+  --text: #1a2b2e;
+  --muted: #5b6b70;
+  --border: #e3e9eb;
+  --ok: #15803d;
+  --ok-soft: #e8f6ec;
+  --warn: #b45309;
+  --warn-soft: #fdf3e4;
+  --danger: #c2261d;
+  --danger-soft: #fdecea;
+  --danger-dark: #8f1d16;
+  --neutral-soft: #eef2f3;
+  --radius: 14px;
+  --radius-sm: 10px;
+  --tap: 48px;
+  --shadow: 0 1px 2px rgba(16, 42, 46, 0.06), 0 1px 1px rgba(16, 42, 46, 0.03);
+  --font: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 17px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  line-height: 1.25;
+  margin: 0;
+}
+
+h1 {
+  font-size: 1.6rem;
+  font-weight: 700;
+}
+
+h2 {
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+h3 {
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+p {
+  margin: 0;
+}
+
+a {
+  color: var(--primary);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 3px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 16px;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.stack-lg {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.row-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.small {
+  font-size: 0.9rem;
+}
+
+.grow {
+  flex: 1;
+  min-width: 0;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
