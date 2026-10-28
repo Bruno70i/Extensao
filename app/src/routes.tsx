@@ -13,6 +13,8 @@ import {
   PrivacyPage,
   ResetPasswordPage,
 } from './pages/auth'
+import { AuditPage } from './pages/admin/Audit'
+import { DashboardPage } from './pages/admin/Dashboard'
 import { UserDetailPage } from './pages/admin/UserDetail'
 import { UsersPage } from './pages/admin/Users'
 import { FamilyHistoryPage, FamilyHomePage } from './pages/family/FamilyPages'
@@ -50,10 +52,6 @@ const STAFF: Role[] = ['admin', 'nurse']
 const ADMIN: Role[] = ['admin']
 const FAMILY: Role[] = ['family']
 
-function Soon({ name }: { name: string }) {
-  return <h1>{name}</h1>
-}
-
 export function AppRoutes() {
   return (
     <Routes>
@@ -82,10 +80,10 @@ export function AppRoutes() {
         <Route path="/familia/historico" element={<FamilyHistoryPage />} />
       </Route>
       <Route element={<RequireRole roles={ADMIN}><Layout /></RequireRole>}>
-        <Route path="/admin" element={<Soon name="Painel" />} />
+        <Route path="/admin" element={<DashboardPage />} />
         <Route path="/admin/usuarios" element={<UsersPage />} />
         <Route path="/admin/usuarios/:id" element={<UserDetailPage />} />
-        <Route path="/admin/auditoria" element={<Soon name="Auditoria" />} />
+        <Route path="/admin/auditoria" element={<AuditPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

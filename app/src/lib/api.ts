@@ -243,3 +243,35 @@ export async function addLink(familyId: string, residentId: string, relationship
 export async function removeLink(familyId: string, residentId: string): Promise<void> {
   await run(supabase.from('family_links').delete().eq('family_id', familyId).eq('resident_id', residentId))
 }
+
+// Auditoria ---------------------------------------------------------------------------
+
+export type AuditRow = Administration & { medication: string; dosage: string; resident_name: string; recorded_by_name: string }
+
+export async function fetchAudit(filters: {
+  residentId?: string
+  nurseId?: string
+  from: string
+  to: string
+}): Promise<AuditRow[]> {
+  let q = supabase
+    .from('administrations')
+    .select('*, prescriptions!inner(medication, dosage, resident_id, residents(full_name)), profiles(full_name)')
+    .gte('recorded_at', spInstant(filters.from, '00:00').toISOString())
+    .lte('recorded_at', new Date(spInstant(filters.to, '23:59').getTime() + 59_999).toISOString())
+    .order('recorded_at', { ascending: false })
+    .limit(200)
+  if (filters.residentId) q = q.eq('prescriptions.resident_id', filters.residentId)
+  if (filters.nurseId) q = q.eq('recorded_by', filters.nurseId)
+  const rows = (await run(q)) as unknown as (Administration & {
+    prescriptions: { medication: string; dosage: string; residents: { full_name: string } | null }
+    profiles: { full_name: string } | null
+  })[]
+  return rows.map(({ prescriptions, profiles, ...a }) => ({
+    ...a,
+    medication: prescriptions.medication,
+    dosage: prescriptions.dosage,
+    resident_name: prescriptions.residents?.full_name ?? '—',
+    recorded_by_name: profiles?.full_name ?? '—',
+  }))
+}
